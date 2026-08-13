@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ComfyChat — ComfyUI Workflow Chat</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23416afe'/%3E%3Ctext x='16' y='22' font-size='16' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='bold'%3ECC%3C/text%3E%3C/svg%3E" />
+  <style>
+    :root {
+      --accent: #416afe;
+      --accent-2: #6a5cff;
+      --accent-soft: #edf1ff;
+      --warn: #ffb155;
+      --text: #1f2430;
+      --muted: #8a91a5;
+      --border: #e8ecf5;
+      --bg: #f6f8fc;
+      --card: #ffffff;
+      --hover: #eef1f8;
+      --shadow: 0 2px 12px rgba(31, 36, 48, 0.06);
+      --shadow-lg: 0 8px 28px rgba(31, 36, 48, 0.12);
+      --radius: 14px;
+      --success: #22a06b;
+      --danger: #d64545;
+      --ai-bubble: #ffffff;
+      --code-bg: #f1f3fa;
+    }
+    html[data-theme="dark"] {
+      --accent: #5b7cff;
+      --accent-2: #8373ff;
+      --accent-soft: #232a4d;
+      --text: #e8eaf2;
+      --muted: #8a91a5;
+      --border: #2a2f42;
+      --bg: #14161f;
+      --card: #1c1f2b;
+      --hover: #252a3a;
+      --shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+      --shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.4);
+      --success: #3ddc97;
+      --danger: #ff7070;
+      --ai-bubble: #232839;
+      --code-bg: #202638;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      -webkit-font-smoothing: antialiased; transition: background 0.2s, color 0.2s;
+    }
+    .app { display: flex; height: 100vh; overflow: hidden; }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: 276px; min-width: 240px; background: var(--card); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; z-index: 2;
+    }
+    .sb-header {
+      padding: 16px 16px 12px; background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+      color: #fff; position: relative;
+    }
+    .sb-top { display: flex; align-items: center; justify-content: space-between; }
+    .logo { font-size: 21px; font-weight: 800; letter-spacing: 0.5px; }
+    .logo span { opacity: 0.85; font-weight: 400; }
+    .icon-btn {
+      background: rgba(255,255,255,0.18); border: none; color: #fff; border-radius: 8px;
+      width: 30px; height: 30px; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center;
+    }
+    .icon-btn:hover { background: rgba(255,255,255,0.3); }
+    .comfy-status {
+      display: inline-flex; align-items: center; gap: 6px; margin-top: 10px;
+      font-size: 12px; padding: 4px 10px; border-radius: 999px; background: rgba(255,255,255,0.18);
+    }
+    .comfy-status .dot { width: 8px; height: 8px; border-radius: 50%; background: #ffd28a; }
+    .comfy-status.online .dot { background: #6fffb0; box-shadow: 0 0 6px #6fffb0; }
+    .comfy-status.offline .dot { background: #ff8a8a; }
+    .new-chat-btn {
+      margin: 12px 14px 4px; border: none; border-radius: 10px; padding: 9px; width: calc(100% - 28px);
+      background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; font-weight: 600;
+      font-size: 13px; cursor: pointer; box-shadow: var(--shadow);
+    }
+    .new-chat-btn:hover { opacity: 0.92; }
+    .sb-section { padding: 10px 16px 4px; font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border);}
+    .sb-section .small { text-transform: none; font-weight: 400; cursor: pointer; }
+    .list-scroll { flex: 1; overflow-y: auto; list-style: none; margin: 0; padding: 4px 10px 10px; max-height: 38%; }
+    .list-scroll.wf { max-height: none; flex: 1; }
+    .list-scroll::-webkit-scrollbar { width: 6px; }
+    .list-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    .list-scroll li {
+      padding: 9px 10px; border-radius: 10px; cursor: pointer; font-size: 13px;
+      display: flex; align-items: center; gap: 9px; margin-bottom: 3px; transition: background 0.15s;
+    }
+    .list-scroll li:hover { background: var(--hover); }
+    .list-scroll li.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+    .list-scroll .ico {
+      width: 28px; height: 28px; border-radius: 8px; background: var(--code-bg);
+      display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0;
+    }
+    .list-scroll li.active .ico { background: var(--accent); }
+    .list-scroll .it-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .list-scroll .it-sub { font-size: 11px; color: var(--muted); font-weight: 400; }
+    .list-scroll .del { opacity: 0; color: var(--muted); font-size: 13px; padding: 2px 4px; border-radius: 5px; }
+    .list-scroll li:hover .del { opacity: 1; }
+    .list-scroll .del:hover { color: var(--danger); background: var(--hover); }
+    .list-scroll .empty { color: var(--muted); cursor: default; justify-content: center; }
+    .sb-footer {
+      padding: 10px 16px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .link-btn { cursor: pointer; color: var(--accent); font-weight: 600; }
+    .link-btn:hover { text-decoration: underline; }
+
+    /* ── Main area ── */
+    .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    .chat-container { flex: 1; overflow-y: auto; padding: 24px 28px; }
+    /* Float-to-bottom button: shown when scrolled away from the bottom */
+    .scroll-to-bottom {
+      position: fixed; right: 32px; bottom: 128px; z-index: 60;
+      width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border);
+      background: var(--card); color: var(--accent); font-size: 20px; font-weight: 700;
+      box-shadow: var(--shadow-lg); cursor: pointer; transition: transform .15s, opacity .2s;
+      display: flex; align-items: center; justify-content: center; padding: 0;
+    }
+    .scroll-to-bottom:hover { transform: translateY(-3px); }
+    .scroll-to-bottom[hidden] { display: none; }
+    .msg { display: flex; margin-bottom: 18px; align-items: flex-start; gap: 10px; }
+    .msg.user { flex-direction: row-reverse; }
+    .avatar {
+      width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0; display: flex;
+      align-items: center; justify-content: center; font-size: 16px; color: #fff;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2)); box-shadow: var(--shadow);
+    }
+    .msg.user .avatar { background: linear-gradient(135deg, #ff9a3d, var(--warn)); }
+    .bubble-wrap { max-width: 74%; display: flex; flex-direction: column; min-width: 0; }
+    /* AI output area spans full width (images laid out horizontally) */
+    .msg.ai .bubble-wrap { max-width: 100%; width: 100%; flex: 1; min-width: 0; }
+    .msg.user .bubble-wrap { max-width: 74%; }
+    .bubble {
+      padding: 11px 15px; border-radius: 14px; font-size: 14px; line-height: 1.6;
+      white-space: pre-wrap; word-break: break-word; box-shadow: var(--shadow);
+      background: var(--ai-bubble);
+    }
+    /* Text bubbles keep adaptive width (not stretched by the AI area) */
+    .msg.ai .bubble { width: fit-content; max-width: 100%; }
+    .msg.ai .bubble.error { width: fit-content; }
+    .msg.ai .result-card, .msg.ai .status-line { width: 100%; }
+    .msg.user .bubble { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; border-top-right-radius: 4px; }
+    /* Toolbar under user bubble: workflow name + regenerate-all button */
+    .user-tools {
+      display: flex; align-items: center; gap: 10px; margin-top: 6px;
+      font-size: 11px; color: var(--muted); justify-content: flex-end;
+    }
+    .user-tools .wf-name { opacity: 0.9; }
+    .user-tools .repro-btn { cursor: pointer; text-decoration: none; font-weight: 600; color: var(--accent); }
+    .bubble.error { background: var(--danger) !important; color: #fff !important; }
+    .status-line { font-size: 12px; color: var(--muted); margin-top: 6px; padding-left: 2px; display: flex; align-items: center; gap: 6px; }
+    /* Per-image param summary (each image has its own seed) */
+    .card-param-summary { font-size: 10px; color: var(--muted); margin-top: 5px; line-height: 1.5; word-break: break-all; font-family: var(--font-mono, monospace);  padding:10px}
+    .user-images { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .user-thumb { width: 88px; height: 88px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); background: var(--bg); }
+    .user-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .status-line .spinner {
+      width: 12px; height: 12px; border: 2px solid var(--border); border-top-color: var(--accent);
+      border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .progress-track { width: 160px; height: 5px; border-radius: 3px; background: var(--border); overflow: hidden; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); border-radius: 3px; transition: width 0.3s; }
+    .result-card {
+      margin-top: 10px; border-radius: 12px; overflow: hidden; border: 1px solid var(--border);
+      box-shadow: var(--shadow); background: var(--card); position: relative;
+    }
+    .result-card img, .result-card video { display: block; width: 100%; height: auto; max-width: 100%; }
+    .result-card img { cursor: zoom-in; transition: transform 0.2s; aspect-ratio: 1 / 1; object-fit: cover; }
+    .result-card img:hover { transform: scale(1.02); }
+    .result-card video, .result-card audio { max-width: 100%; }
+    .result-meta {
+      display: flex; justify-content: space-between; align-items: center; gap: 8px;
+      padding: 8px 12px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--border);
+    }
+    .result-actions { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+    .result-actions a { color: var(--accent); text-decoration: none; font-weight: 600; white-space: nowrap; }
+    .result-actions a:hover { text-decoration: underline; }
+    .result-actions .folder-btn { cursor: pointer; font-size: 13px; }
+    .resource-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; margin-top: 10px; }
+    .resource-grid .result-card { margin-top: 0; width: 100%; }
+
+    /* ── Param panel ── */
+    .panel {
+      background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+      margin: 0 16px;  z-index: 3; overflow: hidden;
+    }
+    .panel-head { display: flex; align-items: center; gap: 10px; padding: 12px 16px; cursor: pointer; user-select: none; }
+    .panel-head .pn-icon { font-size: 15px; }
+    .panel-head .pn-title { font-weight: 700; font-size: 14px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .panel-head .pn-path { font-size: 11px; color: var(--muted); font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 45%; }
+    .panel-head .pn-toggle { color: var(--muted); font-size: 12px; transition: transform 0.2s; }
+    .panel.collapsed .pn-toggle { transform: rotate(-90deg); }
+    /* Panel header actions: ComfyUI link + expand-all button */
+    .pn-actions { display: flex; align-items: center; gap: 4px; margin-left: 4px; }
+    .pn-actions a, .pn-actions button {
+      border: none; background: var(--accent-soft); color: var(--accent); cursor: pointer;
+      width: 26px; height: 26px; border-radius: 7px; display: flex; align-items: center;
+      justify-content: center; font-size: 14px; text-decoration: none; transition: background 0.15s;
+    }
+    .pn-actions a:hover, .pn-actions button:hover { background: var(--accent); color: #fff; }
+    .pn-actions button.active { background: var(--accent); color: #fff; }
+    .panel-body { padding: 4px 16px 14px; display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; max-height: 260px; overflow-y: auto; }
+    .panel-body .param-group { min-width: 0; max-width: none; }
+    .panel-body .group-title { flex-basis: 100%; width: 100%; }
+    /* Preset toolbar */
+    .preset-bar {
+      display: flex; align-items: center; gap: 8px; padding: 10px 16px 4px; font-size: 12px;
+    }
+    .preset-bar label { color: var(--muted); font-weight: 600; white-space: nowrap; }
+    .preset-bar select {
+      flex: 0 1 auto; min-width: 160px; max-width: 280px; border: 1px solid var(--border); border-radius: 8px;
+      padding: 6px 8px; font-size: 12px; background: var(--bg); color: var(--text);
+    }
+    .preset-bar button {
+      border: 1px solid var(--border); background: var(--accent-soft); color: var(--accent);
+      border-radius: 8px; padding: 5px 10px; font-size: 12px; cursor: pointer; white-space: nowrap;
+    }
+    .preset-bar button:hover { background: var(--accent); color: #fff; }
+    .panel.collapsed .panel-body, .panel.collapsed .preset-bar, .panel.collapsed .wf-health { display: none; }
+    /* Workflow health-check banner */
+    .wf-health { padding: 8px 16px 0; font-size: 12px; display: flex; flex-direction: column; gap: 4px; }
+    .wf-health-row.error { color: var(--danger); }
+    .wf-health-row.warn { color: #B8860B; }
+    .wf-health-row.info { color: var(--muted); }
+    /* Param groups: number/select/short-text in a compact row (C2Achat style), long text on its own line */
+    .param-group { display: flex; flex-direction: row; align-items: center; gap: 6px; min-width: 0; }
+    .param-group label { font-size: 11px; color: var(--muted); font-weight: 600; flex-shrink: 0; white-space: nowrap; }
+    .param-group input[type="text"], .param-group input[type=number], .param-group select {
+      border: 1px solid var(--border); border-radius: 8px; padding: 5px 8px; font-size: 12px;
+      background: var(--bg); color: var(--text); outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+      font-family: inherit; height: 30px; flex: none; width: 90px;
+    }
+    .param-group input[type=number] { width: 76px; }
+    .param-group select { width: 130px; }
+    .param-group input:focus, .param-group select:focus, .param-group textarea:focus {
+      border-color: var(--accent); box-shadow: 0 0 0 3px rgba(65, 106, 254, 0.12); background: var(--card);
+    }
+    /* Long text (prompt/negative): full width */
+    .param-group.is-long-text { flex-basis: 100%; align-items: flex-start; }
+    .param-group.is-long-text label { margin-top: 8px; }
+    .param-group textarea {
+      border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; font-size: 13px;
+      background: var(--bg); color: var(--text); outline: none; font-family: inherit;
+      flex: 1; min-width: 0; min-height: 60px; resize: vertical;
+    }
+    .param-group input[type="file"] { border: none; padding: 4px; background: none; font-size: 12px; }
+    .param-group input[type="file"]::file-selector-button {
+      border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; background: var(--bg);
+      font-size: 12px; cursor: pointer; color: var(--text);
+    }
+    .param-group input[type="file"]::file-selector-button:hover { background: var(--accent-soft); }
+    .param-hint { font-size: 10px; color: var(--muted); margin-top: 2px; }
+    /* Multi-image thumb list: own row, horizontal scroll */
+    .param-group.is-image { flex-basis: 100%; flex-wrap: wrap; }   /* Image param takes the whole row */
+    .param-group.is-image .thumb-list {
+      display: flex; gap: 6px; align-items: center; padding: 2px 2px 4px;
+      flex: 1 1 100%; min-width: 0; max-width: 100%;
+      overflow-x: auto; overflow-y: hidden;
+      scrollbar-width: thin;
+    }
+    .thumb-list::-webkit-scrollbar { height: 6px; }
+    .thumb-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    .thumb-list::-webkit-scrollbar-track { background: transparent; }
+    .img-count { font-size: 11px; color: var(--muted); width: 100%; }
+    .thumb-item { position: relative; flex: 0 0 auto; }
+    .thumb-item img {
+      width: 56px; height: 56px; border-radius: 8px; object-fit: cover;
+      border: 1px solid var(--border); display: block;
+    }
+    /* Compression spinner: rotating ring */
+    .thumb-spin {
+      width: 56px; height: 56px; border-radius: 8px; border: 1px dashed var(--border);
+      display: flex; align-items: center; justify-content: center; box-sizing: border-box;
+    }
+    .thumb-spin::after {
+      content: ""; width: 16px; height: 16px; border: 2px solid var(--border);
+      border-top-color: var(--accent); border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    .thumb-del {
+      position: absolute; top: 0; right: 0; width: 18px; height: 18px; border-radius: 50%;
+      background: rgba(220, 38, 38, 0.92); color: #fff; border: 1px solid rgba(255, 255, 255, 0.7);
+      font-size: 11px; line-height: 16px; text-align: center; cursor: pointer; display: none;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35); user-select: none;
+    }
+    .thumb-item:hover .thumb-del { display: block; }
+
+    /* ── Input area (count + prompt + send) ── */
+    .input-wrap { padding: 12px 16px 18px; background: var(--bg); }
+    /* Skill-mode upload bar */
+    .skill-upload-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 10px; margin-bottom: 8px; border: 1px dashed var(--border); border-radius: 10px; background: var(--bg-secondary, transparent); }
+    .skill-tag { font-size: 12px; font-weight: 500; color: var(--accent); background: var(--accent-soft); padding: 2px 8px; border-radius: 6px; }
+    .skill-file-btn { font-size: 12px; color: var(--text); border: 1px solid var(--border); padding: 4px 10px; border-radius: 8px; cursor: pointer; background: var(--bg); }
+    .skill-file-btn:hover { background: var(--accent-soft); }
+    .skill-file-btn input { display: none; }
+    .skill-file-hint { font-size: 11px; color: var(--muted); }
+    .skill-thumbs { display: flex; gap: 5px; flex-wrap: wrap; width: 100%; }
+    .skill-thumbs img { width: 48px; height: 48px; border-radius: 6px; object-fit: cover; border: 1px solid var(--border); }
+    .compose {
+      display: flex; gap: 10px; align-items: flex-end; background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 10px 10px 10px 14px; box-shadow: var(--shadow);
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .compose:focus-within { border-color: var(--accent); box-shadow: 0 0 0 4px rgba(65, 106, 254, 0.12); }
+    .compose textarea {
+      flex: 1; border: none; padding: 8px 0; font-size: 14px; resize: none; outline: none;
+      background: transparent; color: var(--text); font-family: inherit; line-height: 1.5; max-height: 120px;
+    }
+    .send-btn {
+      width: 42px; height: 42px; border: none; border-radius: 12px; cursor: pointer; flex-shrink: 0;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; font-size: 17px;
+      display: flex; align-items: center; justify-content: center; transition: opacity 0.15s, transform 0.1s;
+    }
+    .send-btn:hover:not(:disabled) { opacity: 0.9; transform: scale(1.04); }
+    .send-btn:disabled { background: var(--border); cursor: not-allowed; color: var(--muted); }
+    .count-group { display: flex; flex-direction: column; gap: 4px; }
+    .count-group input {
+      border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; font-size: 13px; width: 62px;
+      background: var(--bg); outline: none; text-align: center; color: var(--text);
+    }
+    .count-group input:focus { border-color: var(--accent); }
+    .drag-overlay {
+      position: fixed; inset: 0; background: rgba(65, 106, 254, 0.08); border: 3px dashed var(--accent);
+      border-radius: 12px; z-index: 100; display: none; align-items: center; justify-content: center;
+      font-size: 18px; color: var(--accent); font-weight: 600; pointer-events: none;
+    }
+    .drag-overlay.show { display: flex; }
+
+    /* ── Image viewer ── */
+    .lightbox {
+      position: fixed; inset: 0; z-index: 300; background: rgba(10, 12, 20, 0.88);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .lightbox[hidden] { display: none; }
+    .lightbox-img {
+      max-width: 88vw; max-height: 86vh; border-radius: 10px; box-shadow: 0 12px 48px rgba(0,0,0,0.6);
+      background: #000; user-select: none;
+    }
+    .lb-btn {
+      position: fixed; top: 50%; transform: translateY(-50%); width: 46px; height: 46px;
+      border-radius: 50%; border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.12);
+      color: #fff; font-size: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s; z-index: 301;
+    }
+    .lb-btn:hover { background: rgba(255,255,255,0.3); }
+    .lb-prev { left: 22px; }
+    .lb-next { right: 22px; }
+    .lb-close { top: 18px; right: 18px; transform: none; font-size: 20px; }
+    .lb-count {
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+      color: rgba(255,255,255,0.85); font-size: 13px; background: rgba(0,0,0,0.5);
+      padding: 4px 12px; border-radius: 999px; z-index: 301; user-select: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="drag-overlay" id="dragOverlay">📥 Drop images here (as reference)</div>
+
+  <!-- Image viewer -->
+  <div class="lightbox" id="lightbox" hidden>
+    <img class="lightbox-img" id="lightboxImg" alt="" />
+    <button class="lb-btn lb-prev" id="lbPrev" title="Previous (←)">‹</button>
+    <button class="lb-btn lb-next" id="lbNext" title="Next (→)">›</button>
+    <button class="lb-btn lb-close" id="lbClose" title="Close (Esc)">✕</button>
+    <div class="lb-count" id="lbCount"></div>
+  </div>
+
+  <div class="app">
+    <!-- Left sidebar -->
+    <aside class="sidebar">
+      <div class="sb-header">
+        <div class="sb-top">
+          <div class="logo">Comfy<span>Chat</span></div>
+          <button id="themeBtn" class="icon-btn" title="Toggle dark/light">🌙</button>
+        </div>
+        <div id="comfyStatus" class="comfy-status"><span class="dot"></span><span id="comfyStatusText">Checking…</span></div>
+      </div>
+      <button id="newChatBtn" class="new-chat-btn">＋ New Chat</button>
+      <div class="sb-section">Chats <span class="small" id="clearConvs" title="Clear chat list">Clear</span></div>
+      <ul id="convList" class="list-scroll"></ul>
+      <div class="sb-section">Workflows <span class="small" id="refreshBtn">↻</span></div>
+      <ul id="workflowList" class="list-scroll wf"></ul>
+      <div class="sb-section" id="skillSection">Skills <span class="small" id="skillHint">native</span></div>
+      <ul id="skillList" class="list-scroll wf"></ul>
+      <div class="sb-footer"><span id="versionInfo">v0.3</span><span id="wfCount"></span></div>
+    </aside>
+
+    <!-- Right main area -->
+    <main class="main">
+      <div id="chatContainer" class="chat-container">
+        <div class="msg ai">
+          <div class="avatar">🤖</div>
+          <div class="bubble-wrap"><div class="bubble">Pick a workflow on the left, fill in the params and send to run it on your local ComfyUI.<br/>Type a prompt in the main input; leave seed empty for random; drag images in as reference.</div></div>
+        </div>
+      </div>
+
+      <button id="scrollToBottom" class="scroll-to-bottom" title="Back to bottom" hidden>↓</button>
+
+      <div class="panel collapsed" id="paramPanel">
+        <div class="panel-head" id="paramPanelHead">
+          <span class="pn-icon">⚙️</span>
+          <span class="pn-title" id="wfName">No workflow selected</span>
+          <span class="pn-path" id="wfPath"></span>
+          <span class="pn-actions">
+            <a href="http://127.0.0.1:8188" target="_blank" title="Open this workflow in ComfyUI (Ctrl+O to import)">🔗</a>
+            <button id="expandAllBtn" title="Expand/collapse all params">⤢</button>
+          </span>
+          <span class="pn-toggle">▼</span>
+        </div>
+        <div class="preset-bar" id="presetBar" hidden>
+          <label title="Saved prompt+param combos — click to load">📋 Presets</label>
+          <select id="presetSelect"><option value="">(Select a preset to load)</option></select>
+          <button id="presetSave" title="Save current prompt & params as preset">＋ Save</button>
+          <button id="presetDel" title="Delete selected preset">🗑</button>
+        </div>
+        <div class="panel-body" id="paramsRow"></div>
+      </div>
+
+      <div class="input-wrap">
+        <div id="skillUploadBar" class="skill-upload-bar" style="display:none">
+          <span class="skill-tag" id="skillTag"></span>
+          <label class="skill-file-btn">Choose images<input type="file" id="skillFileInput" accept="image/*" multiple></label>
+          <span class="skill-file-hint">Multiple allowed, processed one by one</span>
+          <div id="skillThumbs" class="skill-thumbs"></div>
+        </div>
+        <div class="compose">
+          <div class="count-group" id="countGroup">
+            <label style="font-size:11px;color:var(--muted);font-weight:600">Count</label>
+            <input type="number" id="countInput" value="1" min="1" max="20" />
+          </div>
+          <textarea id="userInput" placeholder="Type a prompt, Enter to send, Shift+Enter for newline" rows="1"></textarea>
+          <button id="sendButton" class="send-btn" title="Send" disabled>➤</button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="{{ url_for('static', filename='assets/js/chat.js') }}?v=20260812n"></script>
+</body>
+</html>

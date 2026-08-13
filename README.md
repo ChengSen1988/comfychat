@@ -26,10 +26,23 @@ Pick any workflow you saved in ComfyUI → fill in the params → send → watch
 
 ## 🚀 Quick Start
 
-1. **Start ComfyUI** first (default port 8188)
-2. **Start ComfyChat**: double-click `ComfyChat.bat`
-3. Open **http://127.0.0.1:5001**
-4. Pick a workflow on the left (auto-listed from ComfyUI's `user/default/workflows/`
+1. **Download** this repo, then put the `comfy_chat` folder **inside your ComfyUI
+   installation directory** (sibling of `main.py`):
+
+   ```
+   ComfyUI/
+   ├── main.py              ← ComfyUI main program
+   ├── user/
+   └── comfy_chat/          ← put this folder here
+       ├── ComfyChat.bat
+       ├── StartAll.bat
+       └── ...
+   ```
+
+2. **Start ComfyUI** first (default port 8188)
+3. **Start ComfyChat**: double-click `ComfyChat.bat`
+4. Open **http://127.0.0.1:5001**
+5. Pick a workflow on the left (auto-listed from ComfyUI's `user/default/workflows/`
    and `comfy_chat/workflows/`) → fill params → type a prompt → send
 
 Or use `StartAll.bat` to launch **ComfyUI + ComfyChat together**.

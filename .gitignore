@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+
+# Runtime data (personal / large)
+models/
+output/
+history/
+thumbs/
+presets.json
+
+# Test / temp leftovers
+test_*
+verify_*
+*_test.py
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
